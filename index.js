@@ -3,13 +3,28 @@ const app = express()
 const port = 3000
 const fs = require("fs")
 var bodyParser = require('body-parser')
-var student = new Array();
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/student', { useNewUrlParser: true });
+
+
+const Student = mongoose.model('Student', {
+    name: String,
+    address: {
+        type:Map,
+        validate:function(v){
+            return v.get("road") !== "ABC";
+        }
+    }
+});
+
+
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-    res.json({
+app.get('/', (a, b) => {
+    b.json({
         message: "hello,wolrd!!"
     })
 
@@ -56,48 +71,91 @@ app.get("/sum", (req, res) => {
     res.json(parseInt(req.query.x1) + parseInt(req.query.x2));
 })
 
-app.get("/student",(req,res)=>{
-    res.json({
-        students:student
-    })
+
+
+
+
+app.get("/student", (req, res) => {
+    Student.find({}, function (err, docs) {
+        if (!err) {
+            res.json({
+                student: docs
+            });
+        } else {
+            res.json({
+                success: false
+            });
+        }
+    });
+    // res.json({
+    //     students: student
+    // })
 })
 app.post("/student", (req, res) => {
-    student.push({
-        id: req.body.id,
-        name: req.body.name
-    })
-    res.json({
-        students:student,
-    })
+    const name = req.body.name;
+    const address = req.body.address;
+    const student = new Student({
+        name: name,
+        address: address,
+    });
+const err = student.validateSync();
+console.log(err)
+    student.save(function (err) {
+        if (!err) {
+            res.json({
+                success: true,
+            })
+        }
+        else {
+            res.json({
+                success: false,
+            })
+        }
+    });
+    // res.json({
+    //     success:true,
+    // })
 
 
 })
 
 
 app.delete("/student/:id", (req, res) => {
-    student = student.filter(item => item.id !== req.params.id);
-    res.json({
-        students:student
-    })
+    Student.deleteOne({ _id: req.params.id }, function (err) {
+        res.json({ success: !err });
+    });
+
 })
 
 
-app.put("/student/:id",(req,res)=>{
-    student = student.map(item=>{
-        if(item.id === req.params.id){
-            item.name = req.body.name
+app.put("/student/:id", (req, res) => {
+    Student.updateOne({ _id: req.params.id }, {
+        name: req.body.name,
+        address: req.body.address,
+    },
+        function (err) {
+            if (!err) {
+                res.json({ success: true });
+            } else {
+                res.json({ success: false });
+            }
         }
-        return item;
-    })
-    res.json({
-        students:student
-    })
+    )
 })
 
 
-app.get("/student/:id",(req,res)=>{
-    res.json({
-        student:student.find(item => item.id === Number(req.params.id))
+app.get("/student/:id", (req, res) => {
+    Student.findOne({ _id: req.params.id }, function (err, student) {
+        if (!err) {
+            res.json({
+                student: student
+            });
+        }
+        else {
+            res.json({
+                success: false
+            });
+        }
     })
 })
 
